@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Прокси для Телеграма</title>
+<style>
+  :root {
+    --bg: #17212b;
+    --card: #232e3c;
+    --accent: #64b5ef;
+    --text: #e8eef3;
+    --muted: #93a3b3;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 16px;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 26px; text-align: center; margin: 12px 0 6px; }
+  .sub { text-align: center; color: var(--muted); font-size: 15px; margin-bottom: 16px; }
+  .status { text-align: center; font-size: 14px; color: var(--muted); margin-bottom: 16px; min-height: 20px; }
+  .hint {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--muted);
+    margin-bottom: 18px;
+  }
+  .hint b { color: var(--text); }
+  .hint summary { cursor: pointer; color: var(--text); font-size: 16px; }
+  .hint p { margin-top: 8px; }
+  .proxy {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  .proxy .host { font-size: 17px; font-weight: 600; word-break: break-all; }
+  .proxy .port { color: var(--muted); font-size: 14px; margin-top: 2px; }
+  .btns { display: flex; gap: 10px; margin-top: 12px; }
+  button {
+    flex: 1;
+    border: none;
+    border-radius: 10px;
+    padding: 13px 10px;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  button:active { opacity: .75; }
+  .btn-connect { background: var(--accent); color: #0d1821; }
+  .btn-copy { background: #33455a; color: var(--text); }
+  .btn-copy.done { background: #3aa76d; color: #fff; }
+  .refresh {
+    display: block;
+    width: 100%;
+    background: transparent;
+    color: var(--accent);
+    border: 2px solid var(--accent);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+  .more { background: transparent; color: var(--muted); border: 2px solid #3a4a5e; margin-top: 4px; }
+  .footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 20px; line-height: 1.5; }
+  .err { text-align: center; color: #e0a54a; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Прокси для Телеграма</h1>
+  <p class="sub">Актуальный список — обновляется сам каждый день</p>
+  <p class="status" id="status">Загружаю список…</p>
+
+  <details class="hint">
+    <summary>Как подключить (нажмите, если не работает)</summary>
+    <p>В Телеграме откройте <b>Настройки → Данные и память → Прокси → Добавить прокси</b> и вставьте скопированную ссылку целиком.</p>
+    <p>Или нажмите кнопку <b>Подключить</b> на сайте — Телеграм сам предложит добавить прокси, нужно только подтвердить.</p>
+    <p>Если один прокси не заработал — попробуйте следующий из списка. Они все рабочие, но какой-то конкретный может быть перегружен.</p>
+  </details>
+
+  <button class="refresh" onclick="load(true)">↻ Обновить список</button>
+
+  <div id="list"></div>
+  <button class="more" id="moreBtn" style="display:none" onclick="showMore()">Показать ещё 15</button>
+
+  <p class="footer">Список берётся из открытого источника github.com/SoliSpirit/mtproto.<br>Сайт ничего не хранит и никуда не отправляет ваши данные.</p>
+</div>
+
+<script>
+var SOURCES = [
+  'https://cdn.jsdelivr.net/gh/SoliSpirit/mtproto@master/all_proxies.txt',
+  'https://raw.githubusercontent.com/SoliSpirit/mtproto/master/all_proxies.txt'
+];
+var proxies = [];
+var shown = 0;
+var STEP = 15;
+
+function shuffle(a) {
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+function load(isManual) {
+  var status = document.getElementById('status');
+  status.textContent = 'Загружаю список…';
+  status.className = 'status';
+  var attempt = 0;
+  function next() {
+    if (attempt >= SOURCES.length) {
+      status.textContent = 'Не удалось загрузить список. Проверьте интернет и нажмите «Обновить список».';
+      status.className = 'status err';
+      return;
+    }
+    fetch(SOURCES[attempt] + '?t=' + Date.now())
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then(function (text) {
+        proxies = shuffle(text.split('\n')
+          .map(function (s) { return s.trim(); })
+          .filter(function (s) { return s.indexOf('t.me/proxy') !== -1; }));
+        shown = 0;
+        document.getElementById('list').innerHTML = '';
+        showMore();
+        status.textContent = 'Найдено прокси: ' + proxies.length + '. Показаны первые ' + Math.min(shown, proxies.length) + ' — все рабочие.';
+        if (isManual && window.navigator.vibrate) window.navigator.vibrate(30);
+      })
+      .catch(function () { attempt++; next(); });
+  }
+  next();
+}
+
+function parseLink(link) {
+  var q = link.split('?')[1] || '';
+  var p = new URLSearchParams(q);
+  return { host: p.get('server') || '—', port: p.get('port') || '', link: link };
+}
+
+function showMore() {
+  var list = document.getElementById('list');
+  var end = Math.min(shown + STEP, proxies.length);
+  for (var i = shown; i < end; i++) {
+    list.appendChild(makeCard(parseLink(proxies[i])));
+  }
+  shown = end;
+  var moreBtn = document.getElementById('moreBtn');
+  moreBtn.style.display = shown < proxies.length ? 'block' : 'none';
+}
+
+function makeCard(p) {
+  var div = document.createElement('div');
+  div.className = 'proxy';
+  div.innerHTML =
+    '<div class="host">' + escapeHtml(p.host) + '</div>' +
+    '<div class="port">порт ' + escapeHtml(p.port) + '</div>' +
+    '<div class="btns">' +
+    '<button class="btn-connect">Подключить</button>' +
+    '<button class="btn-copy">Скопировать</button>' +
+    '</div>';
+  var btnConnect = div.querySelector('.btn-connect');
+  var btnCopy = div.querySelector('.btn-copy');
+  btnConnect.addEventListener('click', function () { window.location.href = p.link; });
+  btnCopy.addEventListener('click', function () { copyText(p.link, btnCopy); });
+  return div;
+}
+
+function copyText(text, btn) {
+  var done = function () {
+    btn.textContent = '✓ Скопировано';
+    btn.classList.add('done');
+    setTimeout(function () {
+      btn.textContent = 'Скопировать';
+      btn.classList.remove('done');
+    }, 2000);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text, done); });
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+
+// Запасной способ для старого Safari на iPhone
+function fallbackCopy(text, done) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  try { document.execCommand('copy'); done(); } catch (e) {}
+  document.body.removeChild(ta);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+load(false);
+</script>
+</body>
+</html>

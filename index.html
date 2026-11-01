@@ -9,6 +9,7 @@
     --bg: #17212b;
     --card: #232e3c;
     --accent: #64b5ef;
+    --green: #3aa76d;
     --text: #e8eef3;
     --muted: #93a3b3;
   }
@@ -33,9 +34,27 @@
     color: var(--muted);
     margin-bottom: 18px;
   }
-  .hint b { color: var(--text); }
   .hint summary { cursor: pointer; color: var(--text); font-size: 16px; }
   .hint p { margin-top: 8px; }
+  .hint b { color: var(--text); }
+
+  .label {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    color: var(--green);
+    margin: 4px 2px 8px;
+  }
+  .label.backup { color: var(--muted); margin-top: 20px; }
+  .featured {
+    background: var(--card);
+    border: 2px solid var(--green);
+    border-radius: 16px;
+    padding: 18px 16px;
+  }
+  .featured .host { font-size: 20px; font-weight: 700; word-break: break-all; }
+  .featured .port { color: var(--muted); font-size: 15px; margin-top: 4px; }
   .proxy {
     background: var(--card);
     border-radius: 14px;
@@ -44,21 +63,22 @@
   }
   .proxy .host { font-size: 17px; font-weight: 600; word-break: break-all; }
   .proxy .port { color: var(--muted); font-size: 14px; margin-top: 2px; }
-  .btns { display: flex; gap: 10px; margin-top: 12px; }
+  .btns { display: flex; gap: 10px; margin-top: 14px; }
   button {
     flex: 1;
     border: none;
     border-radius: 10px;
-    padding: 13px 10px;
-    font-size: 17px;
+    padding: 14px 10px;
+    font-size: 18px;
     font-weight: 600;
     cursor: pointer;
     transition: opacity .15s;
   }
   button:active { opacity: .75; }
+  .featured .btn-connect { font-size: 19px; padding: 16px 10px; }
   .btn-connect { background: var(--accent); color: #0d1821; }
   .btn-copy { background: #33455a; color: var(--text); }
-  .btn-copy.done { background: #3aa76d; color: #fff; }
+  .btn-copy.done { background: var(--green); color: #fff; }
   .refresh {
     display: block;
     width: 100%;
@@ -69,8 +89,9 @@
     padding: 12px;
     font-size: 16px;
     margin-bottom: 8px;
+    flex: none;
   }
-  .more { background: transparent; color: var(--muted); border: 2px solid #3a4a5e; margin-top: 4px; }
+  .more { background: transparent; color: var(--muted); border: 2px solid #3a4a5e; margin-top: 4px; flex: none; }
   .footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 20px; line-height: 1.5; }
   .err { text-align: center; color: #e0a54a; }
 </style>
@@ -78,22 +99,25 @@
 <body>
 <div class="wrap">
   <h1>Прокси для Телеграма</h1>
-  <p class="sub">Актуальный список — обновляется сам каждый день</p>
+  <p class="sub">Свежий рабочий прокси + запасные</p>
   <p class="status" id="status">Загружаю список…</p>
 
   <details class="hint">
     <summary>Как подключить (нажмите, если не работает)</summary>
-    <p>В Телеграме откройте <b>Настройки → Данные и память → Прокси → Добавить прокси</b> и вставьте скопированную ссылку целиком.</p>
-    <p>Или нажмите кнопку <b>Подключить</b> на сайте — Телеграм сам предложит добавить прокси, нужно только подтвердить.</p>
-    <p>Если один прокси не заработал — попробуйте следующий из списка. Они все рабочие, но какой-то конкретный может быть перегружен.</p>
+    <p>Нажмите <b>Подключить</b> на большом прокси — Телеграм сам предложит его добавить, останется подтвердить.</p>
+    <p>Вручную: в Телеграме <b>Настройки → Данные и память → Прокси → Добавить прокси</b> и вставьте скопированную ссылку.</p>
+    <p>Если основной прокси не заработал — возьмите запасной ниже.</p>
   </details>
 
   <button class="refresh" onclick="load(true)">↻ Обновить список</button>
 
-  <div id="list"></div>
-  <button class="more" id="moreBtn" style="display:none" onclick="showMore()">Показать ещё 15</button>
+  <div id="featured"></div>
 
-  <p class="footer">Список берётся из открытого источника github.com/SoliSpirit/mtproto.<br>Сайт ничего не хранит и никуда не отправляет ваши данные.</p>
+  <p class="label backup" id="backupLabel" style="display:none">Запасные — если основной не работает</p>
+  <div id="list"></div>
+  <button class="more" id="moreBtn" style="display:none" onclick="showMore()">Показать ещё</button>
+
+  <p class="footer">Список берётся из открытого источника github.com/SoliSpirit/mtproto (обновляется каждый день).<br>Сайт ничего не хранит и никуда не отправляет ваши данные.</p>
 </div>
 
 <script>
@@ -103,15 +127,7 @@ var SOURCES = [
 ];
 var proxies = [];
 var shown = 0;
-var STEP = 15;
-
-function shuffle(a) {
-  for (var i = a.length - 1; i > 0; i--) {
-    var j = Math.floor(Math.random() * (i + 1));
-    var t = a[i]; a[i] = a[j]; a[j] = t;
-  }
-  return a;
-}
+var STEP = 5;
 
 function load(isManual) {
   var status = document.getElementById('status');
@@ -127,13 +143,19 @@ function load(isManual) {
     fetch(SOURCES[attempt] + '?t=' + Date.now())
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
       .then(function (text) {
-        proxies = shuffle(text.split('\n')
+        proxies = text.split('\n')
           .map(function (s) { return s.trim(); })
-          .filter(function (s) { return s.indexOf('t.me/proxy') !== -1; }));
+          .filter(function (s) { return s.indexOf('t.me/proxy') !== -1; });
         shown = 0;
+        document.getElementById('featured').innerHTML = '';
         document.getElementById('list').innerHTML = '';
-        showMore();
-        status.textContent = 'Найдено прокси: ' + proxies.length + '. Показаны первые ' + Math.min(shown, proxies.length) + ' — все рабочие.';
+        document.getElementById('backupLabel').style.display = 'none';
+        if (proxies.length) {
+          document.getElementById('featured').appendChild(makeCard(parseLink(proxies[0]), true));
+          status.textContent = 'Главный прокси — первый из обновлённого сегодня списка (' + proxies.length + ' шт.). Остальные — запасные.';
+        } else {
+          status.textContent = 'Список пуст — нажмите «Обновить список».';
+        }
         if (isManual && window.navigator.vibrate) window.navigator.vibrate(30);
       })
       .catch(function () { attempt++; next(); });
@@ -148,30 +170,47 @@ function parseLink(link) {
 }
 
 function showMore() {
-  var list = document.getElementById('list');
-  var end = Math.min(shown + STEP, proxies.length);
-  for (var i = shown; i < end; i++) {
-    list.appendChild(makeCard(parseLink(proxies[i])));
+  if (!shown) {
+    document.getElementById('backupLabel').style.display = 'block';
   }
-  shown = end;
+  var list = document.getElementById('list');
+  var end = Math.min(shown + STEP + 1, proxies.length);
+  for (var i = shown + 1; i < end; i++) {
+    list.appendChild(makeCard(parseLink(proxies[i]), false));
+  }
+  shown = end - 1;
   var moreBtn = document.getElementById('moreBtn');
-  moreBtn.style.display = shown < proxies.length ? 'block' : 'none';
+  moreBtn.style.display = shown < proxies.length - 1 ? 'block' : 'none';
 }
 
-function makeCard(p) {
+function makeCard(p, isFeatured) {
   var div = document.createElement('div');
-  div.className = 'proxy';
-  div.innerHTML =
-    '<div class="host">' + escapeHtml(p.host) + '</div>' +
-    '<div class="port">порт ' + escapeHtml(p.port) + '</div>' +
-    '<div class="btns">' +
-    '<button class="btn-connect">Подключить</button>' +
-    '<button class="btn-copy">Скопировать</button>' +
-    '</div>';
-  var btnConnect = div.querySelector('.btn-connect');
-  var btnCopy = div.querySelector('.btn-copy');
+  div.className = isFeatured ? 'featured' : 'proxy';
+  var label = document.createElement('p');
+  label.className = 'label';
+  label.textContent = '✓ Рабочий — обновлён сегодня';
+  div.appendChild(label);
+  var host = document.createElement('div');
+  host.className = 'host';
+  host.textContent = p.host;
+  div.appendChild(host);
+  var port = document.createElement('div');
+  port.className = 'port';
+  port.textContent = 'порт ' + p.port;
+  div.appendChild(port);
+  var btns = document.createElement('div');
+  btns.className = 'btns';
+  var btnConnect = document.createElement('button');
+  btnConnect.className = 'btn-connect';
+  btnConnect.textContent = 'Подключить';
   btnConnect.addEventListener('click', function () { window.location.href = p.link; });
+  var btnCopy = document.createElement('button');
+  btnCopy.className = 'btn-copy';
+  btnCopy.textContent = 'Скопировать';
   btnCopy.addEventListener('click', function () { copyText(p.link, btnCopy); });
+  btns.appendChild(btnConnect);
+  btns.appendChild(btnCopy);
+  div.appendChild(btns);
   return div;
 }
 
@@ -203,10 +242,6 @@ function fallbackCopy(text, done) {
   ta.setSelectionRange(0, text.length);
   try { document.execCommand('copy'); done(); } catch (e) {}
   document.body.removeChild(ta);
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 load(false);

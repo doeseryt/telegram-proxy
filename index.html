@@ -43,26 +43,26 @@
     font-weight: 700;
     letter-spacing: .4px;
     text-transform: uppercase;
-    color: var(--green);
     margin: 4px 2px 8px;
   }
-  .label.backup { color: var(--muted); margin-top: 20px; }
+  .label.recommended { color: var(--green); }
+  .label.backup { color: var(--muted); margin-top: 24px; }
   .featured {
     background: var(--card);
     border: 2px solid var(--green);
     border-radius: 16px;
     padding: 18px 16px;
   }
-  .featured .host { font-size: 20px; font-weight: 700; word-break: break-all; }
-  .featured .port { color: var(--muted); font-size: 15px; margin-top: 4px; }
   .proxy {
     background: var(--card);
     border-radius: 14px;
     padding: 14px 16px;
     margin-bottom: 12px;
   }
-  .proxy .host { font-size: 17px; font-weight: 600; word-break: break-all; }
-  .proxy .port { color: var(--muted); font-size: 14px; margin-top: 2px; }
+  .host { font-size: 17px; font-weight: 600; word-break: break-all; }
+  .featured .host { font-size: 20px; font-weight: 700; }
+  .port { color: var(--muted); font-size: 14px; margin-top: 4px; }
+  .featured .port { font-size: 15px; }
   .btns { display: flex; gap: 10px; margin-top: 14px; }
   button {
     flex: 1;
@@ -91,7 +91,6 @@
     margin-bottom: 8px;
     flex: none;
   }
-  .more { background: transparent; color: var(--muted); border: 2px solid #3a4a5e; margin-top: 4px; flex: none; }
   .footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 20px; line-height: 1.5; }
   .err { text-align: center; color: #e0a54a; }
 </style>
@@ -99,35 +98,28 @@
 <body>
 <div class="wrap">
   <h1>Прокси для Телеграма</h1>
-  <p class="sub">Свежий рабочий прокси + запасные</p>
+  <p class="sub">Рекомендуемый + 2 запасных, проверенные на живость</p>
   <p class="status" id="status">Загружаю список…</p>
 
   <details class="hint">
     <summary>Как подключить (нажмите, если не работает)</summary>
-    <p>Нажмите <b>Подключить</b> на большом прокси — Телеграм сам предложит его добавить, останется подтвердить.</p>
+    <p>Нажмите <b>Подключить</b> на зелёном прокси — Телеграм сам предложит его добавить, останется подтвердить.</p>
     <p>Вручную: в Телеграме <b>Настройки → Данные и память → Прокси → Добавить прокси</b> и вставьте скопированную ссылку.</p>
-    <p>Если основной прокси не заработал — возьмите запасной ниже.</p>
+    <p>Если рекомендуемый не заработал — попробуйте запасные ниже.</p>
   </details>
 
   <button class="refresh" onclick="load(true)">↻ Обновить список</button>
 
-  <div id="featured"></div>
+  <div id="cards"></div>
 
-  <p class="label backup" id="backupLabel" style="display:none">Запасные — если основной не работает</p>
-  <div id="list"></div>
-  <button class="more" id="moreBtn" style="display:none" onclick="showMore()">Показать ещё</button>
-
-  <p class="footer">Список берётся из открытого источника github.com/SoliSpirit/mtproto (обновляется каждый день).<br>Сайт ничего не хранит и никуда не отправляет ваши данные.</p>
+  <p class="footer">Список берётся из открытого источника github.com/tgmtproxy (проверяется автоматически каждые 10 минут).<br>Сайт ничего не хранит и никуда не отправляет ваши данные.</p>
 </div>
 
 <script>
 var SOURCES = [
-  'https://cdn.jsdelivr.net/gh/SoliSpirit/mtproto@master/all_proxies.txt',
-  'https://raw.githubusercontent.com/SoliSpirit/mtproto/master/all_proxies.txt'
+  'https://cdn.jsdelivr.net/gh/tgmtproxy/telegram-mtproto-proxy-list@main/proxies.txt',
+  'https://raw.githubusercontent.com/tgmtproxy/telegram-mtproto-proxy-list/main/proxies.txt'
 ];
-var proxies = [];
-var shown = 0;
-var STEP = 5;
 
 function load(isManual) {
   var status = document.getElementById('status');
@@ -143,24 +135,33 @@ function load(isManual) {
     fetch(SOURCES[attempt] + '?t=' + Date.now())
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
       .then(function (text) {
-        proxies = text.split('\n')
+        var links = text.split('\n')
           .map(function (s) { return s.trim(); })
           .filter(function (s) { return s.indexOf('t.me/proxy') !== -1; });
-        shown = 0;
-        document.getElementById('featured').innerHTML = '';
-        document.getElementById('list').innerHTML = '';
-        document.getElementById('backupLabel').style.display = 'none';
-        if (proxies.length) {
-          document.getElementById('featured').appendChild(makeCard(parseLink(proxies[0]), true));
-          status.textContent = 'Главный прокси — первый из обновлённого сегодня списка (' + proxies.length + ' шт.). Остальные — запасные.';
-        } else {
-          status.textContent = 'Список пуст — нажмите «Обновить список».';
-        }
+        render(links);
         if (isManual && window.navigator.vibrate) window.navigator.vibrate(30);
       })
       .catch(function () { attempt++; next(); });
   }
   next();
+}
+
+function render(links) {
+  var status = document.getElementById('status');
+  var cards = document.getElementById('cards');
+  cards.innerHTML = '';
+  var top = links.slice(0, 3);
+  if (!top.length) {
+    status.textContent = 'Список пуст — нажмите «Обновить список».';
+    status.className = 'status err';
+    return;
+  }
+  for (var i = 0; i < top.length; i++) {
+    cards.appendChild(makeCard(parseLink(top[i]), i === 0 ? 'recommended' : 'backup'));
+  }
+  var updated = '';
+  status.className = 'status';
+  status.textContent = 'Прокси из списка, который проверяется на живость каждые 10 минут (всего в источнике ' + links.length + ' шт.).';
 }
 
 function parseLink(link) {
@@ -169,26 +170,12 @@ function parseLink(link) {
   return { host: p.get('server') || '—', port: p.get('port') || '', link: link };
 }
 
-function showMore() {
-  if (!shown) {
-    document.getElementById('backupLabel').style.display = 'block';
-  }
-  var list = document.getElementById('list');
-  var end = Math.min(shown + STEP + 1, proxies.length);
-  for (var i = shown + 1; i < end; i++) {
-    list.appendChild(makeCard(parseLink(proxies[i]), false));
-  }
-  shown = end - 1;
-  var moreBtn = document.getElementById('moreBtn');
-  moreBtn.style.display = shown < proxies.length - 1 ? 'block' : 'none';
-}
-
-function makeCard(p, isFeatured) {
+function makeCard(p, kind) {
   var div = document.createElement('div');
-  div.className = isFeatured ? 'featured' : 'proxy';
+  div.className = kind === 'recommended' ? 'featured' : 'proxy';
   var label = document.createElement('p');
-  label.className = 'label';
-  label.textContent = '✓ Рабочий — обновлён сегодня';
+  label.className = 'label ' + kind;
+  label.textContent = kind === 'recommended' ? '★ Рекомендуемый' : 'Запасной';
   div.appendChild(label);
   var host = document.createElement('div');
   host.className = 'host';

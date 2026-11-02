@@ -10,140 +10,208 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Прокси ТГ">
-<meta name="theme-color" content="#17212b">
+<meta name="theme-color" content="#0e0e10">
 <title>Прокси для Телеграма</title>
 <style>
   :root {
-    --bg: #17212b;
-    --card: #232e3c;
-    --accent: #64b5ef;
-    --green: #3aa76d;
-    --text: #e8eef3;
-    --muted: #93a3b3;
+    --bg: #0e0e10;
+    --line: #26262a;
+    --text: #d6d6d9;
+    --muted: #7c7c85;
+    --accent: #d8a03d;
+    --ok: #8fae74;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
-    padding: 16px;
+    padding: 20px 16px 32px;
   }
-  .wrap { max-width: 640px; margin: 0 auto; }
-  h1 { font-size: 26px; text-align: center; margin: 12px 0 6px; }
-  .sub { text-align: center; color: var(--muted); font-size: 15px; margin-bottom: 16px; }
-  .status { text-align: center; font-size: 14px; color: var(--muted); margin-bottom: 16px; min-height: 20px; }
-  .hint {
-    background: var(--card);
-    border-radius: 12px;
-    padding: 14px 16px;
-    font-size: 15px;
-    line-height: 1.55;
-    color: var(--muted);
-    margin-bottom: 18px;
-  }
-  .hint summary { cursor: pointer; color: var(--text); font-size: 16px; }
-  .hint p { margin-top: 8px; }
-  .hint b { color: var(--text); }
+  .wrap { max-width: 620px; margin: 0 auto; }
 
-  .label {
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: .4px;
+  .masthead {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  h1 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .12em;
     text-transform: uppercase;
-    margin: 4px 2px 8px;
+    color: var(--text);
   }
-  .label.recommended { color: var(--green); }
-  .label.backup { color: var(--muted); margin-top: 24px; }
-  .featured {
-    background: var(--card);
-    border: 2px solid var(--green);
-    border-radius: 16px;
-    padding: 18px 16px;
+  h1 .mark { color: var(--accent); }
+  .masthead .ver {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: .05em;
   }
+  .status {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 14px;
+    min-height: 16px;
+    line-height: 1.5;
+  }
+  .status.err { color: var(--accent); }
+
+  .hint {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .hint summary { cursor: pointer; color: var(--text); font-size: 13px; }
+  .hint summary::marker { color: var(--muted); }
+  .hint p { margin-top: 8px; }
+  .hint b { color: var(--text); font-weight: 600; }
+
   .proxy {
-    background: var(--card);
-    border-radius: 14px;
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--line);
     padding: 14px 16px;
     margin-bottom: 12px;
   }
-  .host { font-size: 17px; font-weight: 600; word-break: break-all; }
-  .featured .host { font-size: 20px; font-weight: 700; }
-  .port { color: var(--muted); font-size: 14px; margin-top: 4px; }
-  .featured .port { font-size: 15px; }
-  .meta { color: var(--green); font-size: 13px; margin-top: 6px; }
-  .btns { display: flex; gap: 10px; margin-top: 14px; }
-  button {
-    flex: 1;
-    border: none;
-    border-radius: 10px;
-    padding: 14px 10px;
-    font-size: 18px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity .15s;
+  .proxy.featured { border-left: 2px solid var(--accent); }
+
+  .label {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
   }
-  button:active { opacity: .75; }
-  .featured .btn-connect { font-size: 19px; padding: 16px 10px; }
-  .btn-connect { background: var(--accent); color: #0d1821; }
-  .btn-copy { background: #33455a; color: var(--text); }
-  .btn-copy.done { background: var(--green); color: #fff; }
+  .label.recommended { color: var(--accent); }
+  .host {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 16px;
+    font-weight: 600;
+    word-break: break-all;
+    color: var(--text);
+  }
+  .featured .host { font-size: 18px; }
+  .port {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 3px;
+  }
+  .meta {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    color: var(--ok);
+    font-size: 11px;
+    margin-top: 8px;
+  }
+
+  .btns { display: flex; gap: 8px; margin-top: 14px; }
+  button {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    border-radius: 2px;
+    padding: 10px 12px;
+    font-size: 13px;
+    letter-spacing: .04em;
+    cursor: pointer;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  button:active { border-color: var(--accent); }
+  .btn-connect {
+    flex: 1;
+    color: var(--bg);
+    background: var(--accent);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .btn-copy { flex: 1; color: var(--text); }
+  .btn-copy:active { color: var(--text); }
+  .btn-copy.done { color: var(--ok); border-color: var(--ok); background: transparent; }
+
   .refresh {
     display: block;
     width: 100%;
-    background: transparent;
-    color: var(--accent);
-    border: 2px solid var(--accent);
-    border-radius: 12px;
-    padding: 12px;
-    font-size: 16px;
     margin-bottom: 8px;
+    color: var(--text);
+    font-weight: 400;
     flex: none;
   }
-  .footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 20px; line-height: 1.5; }
-  .err { text-align: center; color: #e0a54a; }
+  .footer {
+    border-top: 1px solid var(--line);
+    margin-top: 24px;
+    padding-top: 14px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.6;
+  }
   .toggle-all {
     display: block;
     width: 100%;
-    background: transparent;
     color: var(--muted);
     border: none;
-    border-radius: 8px;
+    border-radius: 0;
     padding: 10px;
-    font-size: 14px;
-    cursor: pointer;
-    text-decoration: underline dotted;
+    font-size: 12px;
     margin-top: 4px;
+    text-decoration: underline dotted;
   }
-  .more { background: transparent; color: var(--muted); border: 2px solid #3a4a5e; margin-top: 4px; flex: none; width: 100%; }
   .all-search {
     display: block;
     width: 100%;
-    background: var(--card);
-    border: 1px solid #3a4a5e;
-    border-radius: 10px;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 2px;
     color: var(--text);
-    font-size: 15px;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 13px;
     padding: 10px 12px;
     margin: 12px 0;
     outline: none;
   }
-  .mini { display: flex; align-items: center; gap: 8px; background: var(--card); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+  .all-search:focus { border-color: var(--accent); }
+
+  .mini {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--line);
+    padding: 8px 10px;
+    margin-bottom: 8px;
+  }
   .mini .info { flex: 1; min-width: 0; }
-  .mini .host { font-size: 15px; font-weight: 600; word-break: break-all; }
-  .mini .port { color: var(--muted); font-size: 13px; }
-  .mini button { flex: none; padding: 8px 12px; font-size: 14px; border-radius: 8px; }
+  .mini .host { font-size: 13px; font-weight: 400; }
+  .mini .port { font-size: 11px; margin-top: 2px; }
+  .mini button { flex: none; padding: 8px 10px; font-size: 12px; }
+
+  @media (min-width: 480px) {
+    .proxy { padding: 16px 18px; }
+    .btns { gap: 10px; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Прокси для Телеграма</h1>
-  <p class="sub">Живость проверяется при каждом открытии — с вашего устройства</p>
+  <div class="masthead">
+    <h1>Прокси<span class="mark">·</span>ТГ</h1>
+    <span class="ver">mtproto / live-check</span>
+  </div>
   <p class="status" id="status">Загружаю список…</p>
 
   <details class="hint">
-    <summary>Как подключить (нажмите, если не работает)</summary>
-    <p>Нажмите <b>Подключить</b> на зелёном прокси — Телеграм сам предложит его добавить, останется подтвердить.</p>
+    <summary>Как подключить</summary>
+    <p>Нажмите <b>Подключить</b> на рекомендуемом прокси — Телеграм сам предложит его добавить, останется подтвердить.</p>
     <p>Вручную: в Телеграме <b>Настройки → Данные и память → Прокси → Добавить прокси</b> и вставьте скопированную ссылку.</p>
     <p>Сайт проверяет прокси прямо с вашего телефона в момент открытия. Если рекомендуемый всё равно не заработал — попробуйте запасной или нажмите «Обновить список».</p>
   </details>
@@ -152,15 +220,14 @@
 
   <div id="cards"></div>
 
-  <button class="toggle-all" id="toggleAll" style="display:none" onclick="toggleAll()">показать вообще все прокси (списком)</button>
+  <button class="toggle-all" id="toggleAll" style="display:none" onclick="toggleAll()">показать все прокси (списком)</button>
   <div id="allBox" style="display:none">
-    <input class="all-search" id="allSearch" type="search" placeholder="Поиск по имени сервера…" oninput="renderAll()">
+    <input class="all-search" id="allSearch" type="search" placeholder="поиск по серверу…" oninput="renderAll()">
     <div id="allList"></div>
     <button class="more" id="allMore" onclick="allShown += 50; renderAll()">Показать ещё 50</button>
   </div>
 
-  <p class="footer">Список берётся из открытого источника github.com/tgmtproxy, живость проверяется в вашем браузере.<br>Сайт ничего не хранит и никуда не отправляет ваши данные.</p>
-  <p class="footer" style="margin-top: 8px; font-size: 11px; opacity: .6;">by doeseryt</p>
+  <p class="footer">Источник — открытый список github.com/tgmtproxy, живость проверяется в вашем браузере. Сайт ничего не хранит и никуда не отправляет ваши данные.<br>by doeseryt</p>
 </div>
 
 <script>
@@ -336,7 +403,7 @@ function makeCard(p, kind, rtt) {
   div.className = kind === 'recommended' ? 'featured' : 'proxy';
   var label = document.createElement('p');
   label.className = 'label ' + kind;
-  label.textContent = kind === 'recommended' ? '★ Рекомендуемый — самый быстрый из живых' : 'Запасной';
+  label.textContent = kind === 'recommended' ? 'рекомендуемый · самый быстрый из живых' : 'запасной';
   div.appendChild(label);
   var host = document.createElement('div');
   host.className = 'host';
@@ -349,7 +416,7 @@ function makeCard(p, kind, rtt) {
   if (typeof rtt === 'number' && rtt >= 0) {
     var meta = document.createElement('div');
     meta.className = 'meta';
-    meta.textContent = '● отвечает сейчас, отклик ~' + rtt + ' мс';
+    meta.textContent = '● отвечает сейчас · отклик ~' + rtt + ' мс';
     div.appendChild(meta);
   }
   var btns = document.createElement('div');
@@ -377,7 +444,7 @@ function toggleAll() {
     renderAll();
   } else {
     box.style.display = 'none';
-    btn.textContent = 'показать вообще все прокси (списком)';
+    btn.textContent = 'показать все прокси (списком)';
   }
 }
 

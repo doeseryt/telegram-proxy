@@ -1,4 +1,4 @@
-var CACHE = 'proxy-site-v2';
+﻿var CACHE = 'proxy-site-v3';
 var CORE = [
   './',
   './index.html',
@@ -22,7 +22,7 @@ self.addEventListener('activate', function (e) {
 
 self.addEventListener('fetch', function (e) {
   var url = new URL(e.request.url);
-  // страницу и иконки отдаём из кэша (с обновлением в фоне), прокси-список — всегда из сети
+  // СЃС‚СЂР°РЅРёС†Сѓ Рё РёРєРѕРЅРєРё РѕС‚РґР°С‘Рј РёР· РєСЌС€Р° (СЃ РѕР±РЅРѕРІР»РµРЅРёРµРј РІ С„РѕРЅРµ), РїСЂРѕРєСЃРё-СЃРїРёСЃРѕРє вЂ” РІСЃРµРіРґР° РёР· СЃРµС‚Рё
   if (url.pathname.indexOf('proxies.txt') !== -1) { return; }
   e.respondWith(
     caches.match(e.request, { ignoreSearch: true }).then(function (cached) {

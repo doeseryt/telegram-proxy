@@ -118,9 +118,14 @@
 
 <script>
 var SOURCES = [
-  'https://cdn.jsdelivr.net/gh/tgmtproxy/telegram-mtproto-proxy-list@main/proxies.txt',
-  'https://raw.githubusercontent.com/tgmtproxy/telegram-mtproto-proxy-list/main/proxies.txt'
+  'https://raw.githubusercontent.com/tgmtproxy/telegram-mtproto-proxy-list/main/proxies.txt',
+  'https://cdn.jsdelivr.net/gh/tgmtproxy/telegram-mtproto-proxy-list@main/proxies.txt'
 ];
+
+// при возврате на вкладку из фона — обновить список
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'visible') { load(false); }
+});
 
 function load(isManual) {
   var status = document.getElementById('status');

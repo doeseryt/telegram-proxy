@@ -94,6 +94,37 @@
   }
   .footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 20px; line-height: 1.5; }
   .err { text-align: center; color: #e0a54a; }
+  .toggle-all {
+    display: block;
+    width: 100%;
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 14px;
+    cursor: pointer;
+    text-decoration: underline dotted;
+    margin-top: 4px;
+  }
+  .more { background: transparent; color: var(--muted); border: 2px solid #3a4a5e; margin-top: 4px; flex: none; width: 100%; }
+  .all-search {
+    display: block;
+    width: 100%;
+    background: var(--card);
+    border: 1px solid #3a4a5e;
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 15px;
+    padding: 10px 12px;
+    margin: 12px 0;
+    outline: none;
+  }
+  .mini { display: flex; align-items: center; gap: 8px; background: var(--card); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+  .mini .info { flex: 1; min-width: 0; }
+  .mini .host { font-size: 15px; font-weight: 600; word-break: break-all; }
+  .mini .port { color: var(--muted); font-size: 13px; }
+  .mini button { flex: none; padding: 8px 12px; font-size: 14px; border-radius: 8px; }
 </style>
 </head>
 <body>
@@ -113,6 +144,13 @@
 
   <div id="cards"></div>
 
+  <button class="toggle-all" id="toggleAll" style="display:none" onclick="toggleAll()">показать вообще все прокси (списком)</button>
+  <div id="allBox" style="display:none">
+    <input class="all-search" id="allSearch" type="search" placeholder="Поиск по имени сервера…" oninput="renderAll()">
+    <div id="allList"></div>
+    <button class="more" id="allMore" onclick="allShown += 50; renderAll()">Показать ещё 50</button>
+  </div>
+
   <p class="footer">Список берётся из открытого источника github.com/tgmtproxy, живость проверяется в вашем браузере.<br>Сайт ничего не хранит и никуда не отправляет ваши данные.</p>
   <p class="footer" style="margin-top: 8px; font-size: 11px; opacity: .6;">by doeseryt</p>
 </div>
@@ -124,6 +162,8 @@ var SOURCES = [
 ];
 var PROBE_COUNT = 45;   // сколько первых прокси из списка проверяем
 var PROBE_TIMEOUT = 3500; // мс: не ответил за это время — мёртв
+var allProxies = [];    // полный список для раздела «все прокси»
+var allShown = 50;      // сколько показывать в полном списке
 
 // при возврате на вкладку из фона — перепроверить
 document.addEventListener('visibilitychange', function () {
@@ -159,6 +199,9 @@ function handleList(links) {
   var status = document.getElementById('status');
   var cards = document.getElementById('cards');
   cards.innerHTML = '';
+  allProxies = links.map(parseLink);
+  allShown = 50;
+  document.getElementById('toggleAll').style.display = 'block';
   if (!links.length) {
     status.textContent = 'Список пуст — нажмите «Обновить список».';
     status.className = 'status err';
@@ -314,6 +357,68 @@ function makeCard(p, kind, rtt) {
   btns.appendChild(btnConnect);
   btns.appendChild(btnCopy);
   div.appendChild(btns);
+  return div;
+}
+
+function toggleAll() {
+  var box = document.getElementById('allBox');
+  var btn = document.getElementById('toggleAll');
+  if (box.style.display === 'none') {
+    box.style.display = 'block';
+    btn.textContent = 'скрыть полный список';
+    renderAll();
+  } else {
+    box.style.display = 'none';
+    btn.textContent = 'показать вообще все прокси (списком)';
+  }
+}
+
+function renderAll() {
+  var q = (document.getElementById('allSearch').value || '').trim().toLowerCase();
+  var filtered = allProxies;
+  if (q) {
+    filtered = allProxies.filter(function (p) { return p.host.toLowerCase().indexOf(q) !== -1; });
+  }
+  var list = document.getElementById('allList');
+  list.innerHTML = '';
+  var end = Math.min(allShown, filtered.length);
+  for (var i = 0; i < end; i++) {
+    list.appendChild(makeMiniCard(filtered[i]));
+  }
+  var moreBtn = document.getElementById('allMore');
+  moreBtn.style.display = end < filtered.length ? 'block' : 'none';
+  if (q && !filtered.length) {
+    var p = document.createElement('p');
+    p.className = 'status';
+    p.textContent = 'Ничего не найдено.';
+    list.appendChild(p);
+  }
+}
+
+function makeMiniCard(p) {
+  var div = document.createElement('div');
+  div.className = 'mini';
+  var info = document.createElement('div');
+  info.className = 'info';
+  var host = document.createElement('div');
+  host.className = 'host';
+  host.textContent = p.host;
+  info.appendChild(host);
+  var port = document.createElement('div');
+  port.className = 'port';
+  port.textContent = 'порт ' + p.port;
+  info.appendChild(port);
+  div.appendChild(info);
+  var btnConnect = document.createElement('button');
+  btnConnect.className = 'btn-connect';
+  btnConnect.textContent = 'Подкл.';
+  btnConnect.addEventListener('click', function () { window.location.href = p.link; });
+  var btnCopy = document.createElement('button');
+  btnCopy.className = 'btn-copy';
+  btnCopy.textContent = 'Копир.';
+  btnCopy.addEventListener('click', function () { copyText(p.link, btnCopy); });
+  div.appendChild(btnConnect);
+  div.appendChild(btnCopy);
   return div;
 }
 

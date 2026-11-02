@@ -1,4 +1,4 @@
-﻿var CACHE = 'proxy-site-v3';
+﻿var CACHE = 'proxy-site-v4';
 var CORE = [
   './',
   './index.html',

@@ -20,6 +20,8 @@
     --muted: #7c7c85;
     --accent: #6faf77;
     --ok: #8fae74;
+    --warn: #c9a03d;
+    --bad: #c4574e;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
@@ -110,10 +112,12 @@
   }
   .meta {
     font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-    color: var(--ok);
     font-size: 11px;
     margin-top: 8px;
   }
+  .meta.f-ok { color: var(--ok); }
+  .meta.f-warn { color: var(--warn); }
+  .meta.f-bad { color: var(--bad); }
 
   .btns { display: flex; gap: 8px; margin-top: 14px; }
   button {
@@ -415,7 +419,7 @@ function makeCard(p, kind, rtt) {
   div.appendChild(port);
   if (typeof rtt === 'number' && rtt >= 0) {
     var meta = document.createElement('div');
-    meta.className = 'meta';
+    meta.className = 'meta ' + (rtt < 150 ? 'f-ok' : rtt < 300 ? 'f-warn' : 'f-bad');
     meta.textContent = '● отвечает сейчас · отклик ~' + rtt + ' мс';
     div.appendChild(meta);
   }

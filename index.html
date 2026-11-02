@@ -18,7 +18,7 @@
     --line: #26262a;
     --text: #d6d6d9;
     --muted: #7c7c85;
-    --accent: #d8a03d;
+    --accent: #6faf77;
     --ok: #8fae74;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -400,7 +400,7 @@ function parseLink(link) {
 
 function makeCard(p, kind, rtt) {
   var div = document.createElement('div');
-  div.className = kind === 'recommended' ? 'featured' : 'proxy';
+  div.className = kind === 'recommended' ? 'proxy featured' : 'proxy';
   var label = document.createElement('p');
   label.className = 'label ' + kind;
   label.textContent = kind === 'recommended' ? 'рекомендуемый · самый быстрый из живых' : 'запасной';

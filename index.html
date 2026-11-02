@@ -63,6 +63,7 @@
   .featured .host { font-size: 20px; font-weight: 700; }
   .port { color: var(--muted); font-size: 14px; margin-top: 4px; }
   .featured .port { font-size: 15px; }
+  .meta { color: var(--green); font-size: 13px; margin-top: 6px; }
   .btns { display: flex; gap: 10px; margin-top: 14px; }
   button {
     flex: 1;
@@ -98,21 +99,21 @@
 <body>
 <div class="wrap">
   <h1>Прокси для Телеграма</h1>
-  <p class="sub">Рекомендуемый + 2 запасных, проверенные на живость</p>
+  <p class="sub">Живость проверяется при каждом открытии — с вашего устройства</p>
   <p class="status" id="status">Загружаю список…</p>
 
   <details class="hint">
     <summary>Как подключить (нажмите, если не работает)</summary>
     <p>Нажмите <b>Подключить</b> на зелёном прокси — Телеграм сам предложит его добавить, останется подтвердить.</p>
     <p>Вручную: в Телеграме <b>Настройки → Данные и память → Прокси → Добавить прокси</b> и вставьте скопированную ссылку.</p>
-    <p>Если рекомендуемый не заработал — попробуйте запасные ниже.</p>
+    <p>Сайт проверяет прокси прямо с вашего телефона в момент открытия. Если рекомендуемый всё равно не заработал — попробуйте запасной или нажмите «Обновить список».</p>
   </details>
 
   <button class="refresh" onclick="load(true)">↻ Обновить список</button>
 
   <div id="cards"></div>
 
-  <p class="footer">Список берётся из открытого источника github.com/tgmtproxy (проверяется автоматически каждые 10 минут).<br>Сайт ничего не хранит и никуда не отправляет ваши данные.</p>
+  <p class="footer">Список берётся из открытого источника github.com/tgmtproxy, живость проверяется в вашем браузере.<br>Сайт ничего не хранит и никуда не отправляет ваши данные.</p>
   <p class="footer" style="margin-top: 8px; font-size: 11px; opacity: .6;">by doeseryt</p>
 </div>
 
@@ -121,8 +122,10 @@ var SOURCES = [
   'https://raw.githubusercontent.com/tgmtproxy/telegram-mtproto-proxy-list/main/proxies.txt',
   'https://cdn.jsdelivr.net/gh/tgmtproxy/telegram-mtproto-proxy-list@main/proxies.txt'
 ];
+var PROBE_COUNT = 45;   // сколько первых прокси из списка проверяем
+var PROBE_TIMEOUT = 3500; // мс: не ответил за это время — мёртв
 
-// при возврате на вкладку из фона — обновить список
+// при возврате на вкладку из фона — перепроверить
 document.addEventListener('visibilitychange', function () {
   if (document.visibilityState === 'visible') { load(false); }
 });
@@ -144,7 +147,7 @@ function load(isManual) {
         var links = text.split('\n')
           .map(function (s) { return s.trim(); })
           .filter(function (s) { return s.indexOf('t.me/proxy') !== -1; });
-        render(links);
+        handleList(links);
         if (isManual && window.navigator.vibrate) window.navigator.vibrate(30);
       })
       .catch(function () { attempt++; next(); });
@@ -152,22 +155,123 @@ function load(isManual) {
   next();
 }
 
-function render(links) {
+function handleList(links) {
   var status = document.getElementById('status');
   var cards = document.getElementById('cards');
   cards.innerHTML = '';
-  var top = links.slice(0, 3);
-  if (!top.length) {
+  if (!links.length) {
     status.textContent = 'Список пуст — нажмите «Обновить список».';
     status.className = 'status err';
     return;
   }
-  for (var i = 0; i < top.length; i++) {
-    cards.appendChild(makeCard(parseLink(top[i]), i === 0 ? 'recommended' : 'backup'));
+
+  var candidates = [];
+  var seenHosts = {};
+  for (var i = 0; i < links.length && candidates.length < PROBE_COUNT; i++) {
+    var p = parseLink(links[i]);
+    if (!seenHosts[p.host]) { seenHosts[p.host] = true; candidates.push(p); }
   }
-  var updated = '';
+
+  if (!canProbe()) {
+    // старый браузер без инструментов проверки — просто первые три
+    renderTop(candidates.slice(0, 3), null);
+    status.textContent = 'Браузер не умеет проверять прокси — показаны первые из списка (' + links.length + ' шт. в источнике).';
+    return;
+  }
+
+  status.textContent = 'Проверяю ' + candidates.length + ' прокси с вашего устройства…';
+  var results = new Array(candidates.length);
+  var left = candidates.length;
+  for (var j = 0; j < candidates.length; j++) {
+    (function (idx) {
+      probe(candidates[idx]).then(function (rtt) {
+        results[idx] = rtt;
+        left--;
+        if (left === 0) finish(candidates, results, links.length);
+      });
+    })(j);
+  }
+  // страховка: если что-то зависло намертво — через 6 секунд всё равно решаем
+  setTimeout(function () {
+    if (left > 0) {
+      for (var k = 0; k < results.length; k++) { if (results[k] === undefined) results[k] = -1; }
+      finish(candidates, results, links.length);
+    }
+  }, 6000);
+}
+
+function canProbe() {
+  return 'fetch' in window && 'AbortController' in window;
+}
+
+// Пытаемся достучаться до прокси из браузера. Живой сервер быстро отклонит
+// соединение (это норма — он ждёт протокол Telegram), мёртвый просто молчит
+// до таймаута. Возвращаем время отклика в мс или -1, если мёртв.
+function probe(p) {
+  return new Promise(function (resolve) {
+    var scheme = (p.port === '80' || p.port === '8080') ? 'http' : 'https';
+    var start = Date.now();
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () { ctrl.abort(); }, PROBE_TIMEOUT);
+    fetch(scheme + '://' + p.host + ':' + p.port + '/', { mode: 'no-cors', cache: 'no-store', signal: ctrl.signal })
+      .then(function () {
+        clearTimeout(timer);
+        resolve(Date.now() - start);
+      })
+      .catch(function (err) {
+        clearTimeout(timer);
+        if (err && err.name === 'AbortError') { resolve(-1); return; }
+        var elapsed = Date.now() - start;
+        resolve(elapsed >= 80 ? elapsed : -1);
+      });
+  });
+}
+
+function finish(candidates, results, total) {
+  var alive = [];
+  for (var i = 0; i < candidates.length; i++) {
+    if (results[i] !== undefined && results[i] >= 0) {
+      alive.push({ p: candidates[i], rtt: results[i] });
+    }
+  }
+  alive.sort(function (a, b) { return a.rtt - b.rtt; });
+
+  // не больше одного прокси от одного хозяина: группируем по домену 2-го уровня
+  var byOwner = {};
+  var picked = [];
+  var rest = [];
+  for (var j = 0; j < alive.length; j++) {
+    var key = ownerKey(alive[j].p.host);
+    if (!byOwner[key] && picked.length < 3) { byOwner[key] = true; picked.push(alive[j]); }
+    else rest.push(alive[j]);
+  }
+  while (picked.length < 3 && rest.length) { picked.push(rest.shift()); }
+
+  var status = document.getElementById('status');
   status.className = 'status';
-  status.textContent = 'Прокси из списка, который проверяется на живость каждые 10 минут (всего в источнике ' + links.length + ' шт.).';
+  if (!picked.length) {
+    status.textContent = 'Сейчас ни один из ' + candidates.length + ' проверенных не отвечает. Нажмите «Обновить список» или попробуйте позже.';
+    status.className = 'status err';
+    return;
+  }
+  renderTop(picked, total);
+  status.textContent = 'Проверено с вашего устройства сейчас: живых ' + alive.length + ' из ' + candidates.length + '. Показаны три самых быстрых.';
+}
+
+function ownerKey(host) {
+  var parts = host.split('.');
+  while (parts.length > 2) { parts.shift(); }
+  return parts.join('.');
+}
+
+function renderTop(list, total) {
+  var cards = document.getElementById('cards');
+  cards.innerHTML = '';
+  for (var i = 0; i < list.length; i++) {
+    var item = list[i];
+    var p = item.p ? item.p : item;
+    cards.appendChild(makeCard(p, i === 0 ? 'recommended' : 'backup', item.rtt));
+  }
 }
 
 function parseLink(link) {
@@ -176,12 +280,12 @@ function parseLink(link) {
   return { host: p.get('server') || '—', port: p.get('port') || '', link: link };
 }
 
-function makeCard(p, kind) {
+function makeCard(p, kind, rtt) {
   var div = document.createElement('div');
   div.className = kind === 'recommended' ? 'featured' : 'proxy';
   var label = document.createElement('p');
   label.className = 'label ' + kind;
-  label.textContent = kind === 'recommended' ? '★ Рекомендуемый' : 'Запасной';
+  label.textContent = kind === 'recommended' ? '★ Рекомендуемый — самый быстрый из живых' : 'Запасной';
   div.appendChild(label);
   var host = document.createElement('div');
   host.className = 'host';
@@ -191,6 +295,12 @@ function makeCard(p, kind) {
   port.className = 'port';
   port.textContent = 'порт ' + p.port;
   div.appendChild(port);
+  if (typeof rtt === 'number' && rtt >= 0) {
+    var meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = '● отвечает сейчас, отклик ~' + rtt + ' мс';
+    div.appendChild(meta);
+  }
   var btns = document.createElement('div');
   btns.className = 'btns';
   var btnConnect = document.createElement('button');
